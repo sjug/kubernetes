@@ -98,15 +98,18 @@ type TestContextType struct {
 	}
 
 	ClusterLoader struct {
-		Projects []struct {
-			Number    int    `json:"num"`
-			BaseName  string `json:"basename"`
-			Tuning    string `json:"tuning"`
-			Templates []struct {
-				Number int    `json:"num"`
-				File   string `json:"file"`
-			} `json:"projects"`
-		} `json:"projects"`
+		Projects []ClusterLoaderType
+	}
+}
+
+// Struct only used for Cluster Loader test config
+type ClusterLoaderType struct {
+	Number    int    `json:"num"`
+	BaseName  string `json:"basename"`
+	Tuning    string `json:"tuning"`
+	Templates []struct {
+		Number int    `json:"num"`
+		File   string `json:"file"`
 	}
 }
 

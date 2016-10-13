@@ -45,6 +45,9 @@ var _ = framework.KubeDescribe("Logging soak [Performance] [Slow] [Disruptive]",
 	// Returns wave interval (how many seconds to wait before dumping the next wave of pods).
 	readConfig := func() (int, time.Duration) {
 		// Read in configuration settings, reasonable defaults.
+		project := framework.TestContext.ClusterLoader.Projects
+		framework.Logf("Loaded project config: %v", project)
+
 		scale := framework.TestContext.LoggingSoak.Scale
 		if framework.TestContext.LoggingSoak.Scale == 0 {
 			scale = 1

@@ -17,6 +17,7 @@ limitations under the License.
 package e2e
 
 import (
+	"github.com/spf13/viper"
 	"testing"
 
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -27,5 +28,6 @@ func init() {
 }
 
 func TestE2E(t *testing.T) {
+	viper.Debug()
 	RunE2ETests(t)
 }

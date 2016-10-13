@@ -96,6 +96,18 @@ type TestContextType struct {
 		Scale                    int
 		MilliSecondsBetweenWaves int
 	}
+
+	ClusterLoader struct {
+		Projects struct {
+			Number    int    `json:"num"`
+			BaseName  string `json:"basename"`
+			Tuning    string `json:"tuning"`
+			Templates struct {
+				Number int    `json:"num"`
+				File   string `json:"file"`
+			} `json:"projects"`
+		} `json:"projects"`
+	}
 }
 
 // NodeTestContextType is part of TestContextType, it is shared by all node e2e test.

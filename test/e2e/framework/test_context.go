@@ -98,11 +98,11 @@ type TestContextType struct {
 	}
 
 	ClusterLoader struct {
-		Projects struct {
+		Projects []struct {
 			Number    int    `json:"num"`
 			BaseName  string `json:"basename"`
 			Tuning    string `json:"tuning"`
-			Templates struct {
+			Templates []struct {
 				Number int    `json:"num"`
 				File   string `json:"file"`
 			} `json:"projects"`

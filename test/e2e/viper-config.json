@@ -1,16 +1,18 @@
 {
     "provider": "local",
-    "projects": [
-        {
-            "num": 1,
-            "basename": "cakephp-mysql",
-            "tuning": "default",
-            "templates": [
-                {
-                    "num": 1,
-                    "file": "./content/quickstarts/cakephp/cakephp-mysql.json"
-                }
-            ]
-        }
-    ]
+    "ClusterLoader": {
+        "projects": [
+            {
+                "num": 1,
+                "basename": "cakephp-mysql",
+                "tuning": "default",
+                "templates": [
+                    {
+                        "num": 1,
+                        "file": "./content/quickstarts/cakephp/cakephp-mysql.json"
+                    }
+                ]
+            }
+        ]
+    }
 }

@@ -49,7 +49,7 @@ var _ = framework.KubeDescribe("Logging soak [Performance] [Slow] [Disruptive]",
 		framework.Logf("Loaded project config: %v", project)
 
 		scale := framework.TestContext.LoggingSoak.Scale
-		if framework.TestContext.LoggingSoak.Scale == 0 {
+		if scale == 0 {
 			scale = 1
 			framework.Logf("Overriding default scale value of zero to %d", scale)
 		}

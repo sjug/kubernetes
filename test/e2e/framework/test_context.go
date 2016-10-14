@@ -104,12 +104,12 @@ type TestContextType struct {
 
 // Struct only used for Cluster Loader test config
 type ClusterLoaderType struct {
-	Number    int    `json:"num"`
-	BaseName  string `json:"basename"`
-	Tuning    string `json:"tuning"`
+	Number    int `mapstructure:"num"`
+	BaseName  string
+	Tuning    string
 	Templates []struct {
-		Number int    `json:"num"`
-		File   string `json:"file"`
+		Number int `mapstructure:"num"`
+		File   string
 	}
 }
 
@@ -146,6 +146,10 @@ type CloudConfig struct {
 
 var TestContext TestContextType
 var federatedKubeContext string
+
+func init() {
+	ViperizeFlags()
+}
 
 // Register flags common to all e2e test suites.
 func RegisterCommonFlags() {

@@ -1,5 +1,8 @@
 {
     "provider": "local",
+    "LoggingSoak": {
+        "Scale": 2
+    },
     "ClusterLoader": {
         "projects": [
             {

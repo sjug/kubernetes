@@ -7,12 +7,23 @@
         "projects": [
             {
                 "num": 1,
-                "basename": "cakephp-mysql",
+                "basename": "nginx-solo",
                 "tuning": "default",
                 "templates": [
                     {
                         "num": 1,
-                        "file": "./content/quickstarts/cakephp/cakephp-mysql.json"
+                        "file": "nginx.yaml"
+                    }
+                ]
+            },
+            {
+                "num": 1,
+                "basename": "guestbook-redis",
+                "tuning": "default",
+                "templates": [
+                    {
+                        "num": 1,
+                        "file": "guestbook-all-in-one.yaml"
                     }
                 ]
             }

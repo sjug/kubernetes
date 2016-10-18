@@ -30,30 +30,35 @@ import (
 
 var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]", func() {
 	f := framework.NewDefaultFramework("cluster-loader")
+	defer GinkgoRecover()
 
 	var c *client.Client
 	BeforeEach(func() {
 		c = f.Client
 	})
 
-	readConfig := func() []framework.ClusterLoaderType {
+	readConfig := func() ([]framework.ClusterLoaderType, int) {
 		// Read in configuration settings
 		project := framework.TestContext.ClusterLoader.Projects
-		framework.Logf("Loaded project config: %v, length: %v, type %T) {", project, len(project), project)
-		return project
+		if framework.TestContext.ClusterLoader.Delete == false {
+			framework.TestContext.DeleteNamespace = false
+		}
+
+		return project, len(project)
 	}
 
-	project := readConfig()
-	It(fmt.Sprintf("running config file: %v", project), func() {
-		defer GinkgoRecover()
+	project, nsNum := readConfig()
+	if nsNum <= 0 {
+		framework.Failf("invalid config file.\nFile: %v", project)
+	}
 
+	It(fmt.Sprintf("running config file: %v, length: %v, type %T", project, nsNum, project), func() {
 		// Helper func to make fq path to Kube config file
 		mkpath := func(file string) string {
 			return filepath.Join(framework.TestContext.RepoRoot, "examples/cluster-loader", file)
 		}
 
 		// Get number of namespaces defined in Cluster Loader config
-		nsNum := len(project)
 		var namespaces = make([]*api.Namespace, nsNum)
 
 		// Create namespaces as defined in Cluster Loader config

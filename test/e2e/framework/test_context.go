@@ -98,6 +98,7 @@ type TestContextType struct {
 	}
 
 	ClusterLoader struct {
+		Delete   bool
 		Projects []ClusterLoaderType
 	}
 }

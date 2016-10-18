@@ -1,0 +1,18 @@
+provider: local
+LoggingSoak:
+  Scale: 2
+ClusterLoader:
+  delete: true
+  projects:
+    - num: 1
+      basename: nginx-solo
+      tuning: default
+      templates:
+        - num: 1
+          file: nginx.yaml
+    - num: 1
+      basename: guestbook-redis
+      tuning: default
+      templates:
+        - num: 1
+          file: guestbook-all-in-one.yaml

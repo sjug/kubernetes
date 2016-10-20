@@ -679,6 +679,21 @@ func (f *Framework) CreatePodsPerNodeForSimpleApp(appName string, podSpec func(n
 	return labels
 }
 
+func (f *Framework) CreatePods(appName string, ns string, spec api.PodSpec, maxCount int) {
+	for i := 0; i < maxCount; i++ {
+		Logf("%v/%v : Creating container", i+1, maxCount)
+		_, err := f.Client.Pods(ns).Create(&api.Pod{
+			ObjectMeta: api.ObjectMeta{
+				Name:      fmt.Sprintf(appName+"-pod-%v", i),
+				Namespace: ns,
+				Labels:    map[string]string{"purpose": "test"},
+			},
+			Spec: spec,
+		})
+		ExpectNoError(err)
+	}
+}
+
 type KubeUser struct {
 	Name string `yaml:"name"`
 	User struct {

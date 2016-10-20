@@ -17,7 +17,9 @@ limitations under the License.
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
@@ -48,7 +50,7 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 	}
 
 	project, nsNum := readConfig()
-	if nsNum <= 0 {
+	if nsNum < 1 {
 		framework.Failf("invalid config file.\nFile: %v", project)
 	}
 
@@ -67,16 +69,53 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 			nsName := framework.TestContext.ClusterLoader.Projects[i].BaseName
 			namespaces[i], err = f.CreateNamespace(nsName, nil)
 			Expect(err).NotTo(HaveOccurred())
-			framework.Logf("Created new namespace: %v, NS: %d/%d", nsName, i+1, nsNum)
+			framework.Logf("%d/%d : Created new namespace: %v", i+1, nsNum, nsName)
 		}
 
 		// Create all pods from YAML defined in Cluster Loader config
 		for i, ns := range namespaces {
-			templateFilename := framework.TestContext.ClusterLoader.Projects[i].Templates[0].File
+			var templateFilename, baseName, run string
+			var numObjects int
+
+			// Try to see what config object exists
+			if len(framework.TestContext.ClusterLoader.Projects[i].Templates) > 0 {
+				templateFilename = framework.TestContext.ClusterLoader.Projects[i].Templates[0].File
+				run = "template"
+			} else if len(framework.TestContext.ClusterLoader.Projects[i].Pods) > 0 {
+				templateFilename = framework.TestContext.ClusterLoader.Projects[i].Pods[0].File
+				numObjects = framework.TestContext.ClusterLoader.Projects[i].Pods[0].Number
+				baseName = framework.TestContext.ClusterLoader.Projects[i].Pods[0].Basename
+				run = "pod"
+			}
+
+			// Handle an empty filename.
+			if templateFilename == "" {
+				framework.Failf("No template file defined!")
+			}
+
+			// Debugging mostly
 			framework.Logf("Template filename is: %v", templateFilename)
 			podYAML := mkpath(templateFilename)
 			framework.Logf("Full config path is: %v", podYAML)
-			framework.RunKubectlOrDie("create", "-f", podYAML, getNsCmdFlag(ns))
+
+			// Decide how to create objects
+			switch run {
+			case "template":
+				// Templates have several objects in one file
+				framework.RunKubectlOrDie("create", "-f", podYAML, getNsCmdFlag(ns))
+				framework.Logf("%d/%d : Created template ", i+1, nsNum)
+			case "pod":
+				// In order to modify values in config, we load them into struct
+				config, err := ioutil.ReadFile(podYAML)
+				if err != nil {
+					framework.Failf("Cant read config file. Error: %v", err)
+				}
+
+				var configJSON api.Pod
+				err = json.Unmarshal(config, &configJSON)
+				framework.Logf("The loaded config file is: %+v", configJSON.Spec.Containers)
+				f.CreatePods(baseName, ns.Name, configJSON.Spec, numObjects)
+			}
 		}
 
 		// Wait for pods to be running
@@ -84,7 +123,7 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 			label := labels.SelectorFromSet(labels.Set(map[string]string{"purpose": "test"}))
 			err := framework.WaitForPodsWithLabelRunning(c, ns.Name, label)
 			Expect(err).NotTo(HaveOccurred())
-			framework.Logf("All pods running.")
+			framework.Logf("All pods running in namespace %s.", ns.Name)
 		}
 	})
 })

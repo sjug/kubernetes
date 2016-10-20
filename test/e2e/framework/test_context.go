@@ -112,6 +112,13 @@ type ClusterLoaderType struct {
 		Number int `mapstructure:"num"`
 		File   string
 	}
+	Pods []struct {
+		Total    int
+		Number   int `mapstructure:"num"`
+		Image    string
+		Basename string
+		File     string
+	}
 }
 
 // NodeTestContextType is part of TestContextType, it is shared by all node e2e test.

@@ -98,27 +98,26 @@ type TestContextType struct {
 	}
 
 	ClusterLoader struct {
-		Delete   bool
 		Projects []ClusterLoaderType
 	}
 }
 
-// Struct only used for Cluster Loader test config
+// ClusterLoaderType struct only used for Cluster Loader test config
 type ClusterLoaderType struct {
 	Number    int `mapstructure:"num"`
-	BaseName  string
+	Basename  string
 	Tuning    string
-	Templates []struct {
-		Number int `mapstructure:"num"`
-		File   string
-	}
-	Pods []struct {
-		Total    int
-		Number   int `mapstructure:"num"`
-		Image    string
-		Basename string
-		File     string
-	}
+	Templates []ClusterLoaderObjectType
+	Pods      []ClusterLoaderObjectType
+}
+
+// ClusterLoaderObjectType is nested object type for cluster loader struct
+type ClusterLoaderObjectType struct {
+	Total    int
+	Number   int `mapstructure:"num"`
+	Image    string
+	Basename string
+	File     string
 }
 
 // NodeTestContextType is part of TestContextType, it is shared by all node e2e test.

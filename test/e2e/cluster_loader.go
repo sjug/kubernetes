@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -39,82 +40,36 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 		c = f.Client
 	})
 
-	readConfig := func() ([]framework.ClusterLoaderType, int) {
-		// Read in configuration settings
-		project := framework.TestContext.ClusterLoader.Projects
-		if framework.TestContext.ClusterLoader.Delete == false {
-			framework.TestContext.DeleteNamespace = false
-		}
-
-		return project, len(project)
-	}
-
-	project, nsNum := readConfig()
-	if nsNum < 1 {
+	project := framework.TestContext.ClusterLoader.Projects
+	if len(project) < 1 {
 		framework.Failf("invalid config file.\nFile: %v", project)
 	}
 
-	It(fmt.Sprintf("running config file: %v, length: %v, type %T", project, nsNum, project), func() {
-		// Helper func to make fq path to Kube config file
-		mkpath := func(file string) string {
-			return filepath.Join(framework.TestContext.RepoRoot, "examples/cluster-loader", file)
-		}
+	It(fmt.Sprintf("running config file: %v, length: %v, type %T", project, len(project), project), func() {
+		var namespaces []*api.Namespace
+		for _, p := range project {
+			for j := 0; j < p.Number; j++ {
+				// Create namespaces as defined in Cluster Loader config
+				nsName := p.Basename + strconv.Itoa(j)
+				ns, err := f.CreateNamespace(nsName, nil)
+				Expect(err).NotTo(HaveOccurred())
+				framework.Logf("%d/%d : Created new namespace: %v", j+1, p.Number, nsName)
+				namespaces = append(namespaces, ns)
 
-		// Get number of namespaces defined in Cluster Loader config
-		var namespaces = make([]*api.Namespace, nsNum)
-
-		// Create namespaces as defined in Cluster Loader config
-		for i := range namespaces {
-			var err error
-			nsName := framework.TestContext.ClusterLoader.Projects[i].BaseName
-			namespaces[i], err = f.CreateNamespace(nsName, nil)
-			Expect(err).NotTo(HaveOccurred())
-			framework.Logf("%d/%d : Created new namespace: %v", i+1, nsNum, nsName)
-		}
-
-		// Create all pods from YAML defined in Cluster Loader config
-		for i, ns := range namespaces {
-			var templateFilename, baseName, run string
-			var numObjects int
-
-			// Try to see what config object exists
-			if len(framework.TestContext.ClusterLoader.Projects[i].Templates) > 0 {
-				templateFilename = framework.TestContext.ClusterLoader.Projects[i].Templates[0].File
-				run = "template"
-			} else if len(framework.TestContext.ClusterLoader.Projects[i].Pods) > 0 {
-				templateFilename = framework.TestContext.ClusterLoader.Projects[i].Pods[0].File
-				numObjects = framework.TestContext.ClusterLoader.Projects[i].Pods[0].Number
-				baseName = framework.TestContext.ClusterLoader.Projects[i].Pods[0].Basename
-				run = "pod"
-			}
-
-			// Handle an empty filename.
-			if templateFilename == "" {
-				framework.Failf("No template file defined!")
-			}
-
-			// Debugging mostly
-			framework.Logf("Template filename is: %v", templateFilename)
-			podYAML := mkpath(templateFilename)
-			framework.Logf("Full config path is: %v", podYAML)
-
-			// Decide how to create objects
-			switch run {
-			case "template":
-				// Templates have several objects in one file
-				framework.RunKubectlOrDie("create", "-f", podYAML, getNsCmdFlag(ns))
-				framework.Logf("%d/%d : Created template ", i+1, nsNum)
-			case "pod":
-				// In order to modify values in config, we load them into struct
-				config, err := ioutil.ReadFile(podYAML)
-				if err != nil {
-					framework.Failf("Cant read config file. Error: %v", err)
+				// How about we create some templates
+				for _, v := range p.Templates {
+					templateFilename := v.File
+					numObjects := v.Number
+					baseName := v.Basename
+					createTemplate(mkPath(templateFilename), numObjects, baseName, ns)
 				}
-
-				var configJSON api.Pod
-				err = json.Unmarshal(config, &configJSON)
-				framework.Logf("The loaded config file is: %+v", configJSON.Spec.Containers)
-				f.CreatePods(baseName, ns.Name, configJSON.Spec, numObjects)
+				// This is too familiar, create pods
+				for _, v := range p.Pods {
+					templateFilename := v.File
+					numObjects := v.Number
+					baseName := v.Basename
+					parsePods(f, mkPath(templateFilename), numObjects, baseName, ns)
+				}
 			}
 		}
 
@@ -127,3 +82,38 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 		}
 	})
 })
+
+func mkPath(file string) string {
+	// Handle an empty filename.
+	if file == "" {
+		framework.Failf("No template file defined!")
+	}
+	return filepath.Join(framework.TestContext.RepoRoot, "examples/", file)
+}
+
+//func readObjConfig(obj []framework.ClusterLoaderObjectType) (templateFilename string, numObjects int, baseName string) {
+//	for _, v := range obj {
+//		templateFilename = v.File
+//		numObjects = v.Number
+//		baseName = v.Basename
+//	}
+//	return
+//}
+
+// TODO: Can only create one template per namespace, no way to make duplicates?
+func createTemplate(podYAML string, numObjects int, baseName string, ns *api.Namespace) {
+	framework.RunKubectlOrDie("create", "-f", podYAML, getNsCmdFlag(ns))
+	framework.Logf("1/%d : Created template %s", numObjects, baseName)
+}
+
+func parsePods(f *framework.Framework, podYAML string, numObjects int, baseName string, ns *api.Namespace) {
+	config, err := ioutil.ReadFile(podYAML)
+	if err != nil {
+		framework.Failf("Cant read config file. Error: %v", err)
+	}
+
+	var configJSON api.Pod
+	err = json.Unmarshal(config, &configJSON)
+	framework.Logf("The loaded config file is: %+v", configJSON.Spec.Containers)
+	f.CreatePods(baseName, ns.Name, configJSON.Spec, numObjects)
+}

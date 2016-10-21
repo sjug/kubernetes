@@ -58,17 +58,11 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 
 				// How about we create some templates
 				for _, v := range p.Templates {
-					templateFilename := v.File
-					numObjects := v.Number
-					baseName := v.Basename
-					createTemplate(mkPath(templateFilename), numObjects, baseName, ns)
+					createTemplate(mkPath(v.File), v.Number, v.Basename, ns)
 				}
 				// This is too familiar, create pods
 				for _, v := range p.Pods {
-					templateFilename := v.File
-					numObjects := v.Number
-					baseName := v.Basename
-					parsePods(f, mkPath(templateFilename), numObjects, baseName, ns)
+					parsePods(f, mkPath(v.File), v.Number, v.Basename, ns)
 				}
 			}
 		}
@@ -90,15 +84,6 @@ func mkPath(file string) string {
 	}
 	return filepath.Join(framework.TestContext.RepoRoot, "examples/", file)
 }
-
-//func readObjConfig(obj []framework.ClusterLoaderObjectType) (templateFilename string, numObjects int, baseName string) {
-//	for _, v := range obj {
-//		templateFilename = v.File
-//		numObjects = v.Number
-//		baseName = v.Basename
-//	}
-//	return
-//}
 
 // TODO: Can only create one template per namespace, no way to make duplicates?
 func createTemplate(podYAML string, numObjects int, baseName string, ns *api.Namespace) {

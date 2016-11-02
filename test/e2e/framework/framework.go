@@ -679,18 +679,44 @@ func (f *Framework) CreatePodsPerNodeForSimpleApp(appName string, podSpec func(n
 	return labels
 }
 
-func (f *Framework) CreatePods(appName string, ns string, spec api.PodSpec, maxCount int) {
+func (f *Framework) CreatePods(appName string, ns string, spec api.PodSpec, maxCount int, tuning *TuningSetType) {
 	for i := 0; i < maxCount; i++ {
 		Logf("%v/%v : Creating container", i+1, maxCount)
+		labels := map[string]string{"purpose": "test"}
 		_, err := f.Client.Pods(ns).Create(&api.Pod{
 			ObjectMeta: api.ObjectMeta{
 				Name:      fmt.Sprintf(appName+"-pod-%v", i),
 				Namespace: ns,
-				Labels:    map[string]string{"purpose": "test"},
+				Labels:    labels,
 			},
 			Spec: spec,
 		})
 		ExpectNoError(err)
+		if tuning != nil && tuning.Pods.Stepping.StepSize != 0 && (i+1)%tuning.Pods.Stepping.StepSize == 0 {
+			verifyRunning := &ClusterVerification{
+				f.Client,
+				&api.Namespace{
+					ObjectMeta: api.ObjectMeta{
+						Name: ns,
+					},
+					Status: api.NamespaceStatus{},
+				},
+				PodStateVerification{
+					Selectors:   labels,
+					ValidPhases: []api.PodPhase{api.PodRunning},
+				},
+			}
+
+			pods, err := verifyRunning.WaitFor(i+1, time.Duration(60*time.Second))
+			if err != nil {
+				Failf("Error in wait... %v", err)
+			} else if len(pods) < i+1 {
+				Failf("Only got %v out of %v", len(pods), i+1)
+			}
+
+			Logf("We have created %d pods and are now sleeping for %d seconds", i+1, tuning.Pods.Stepping.Pause)
+			time.Sleep(time.Duration(tuning.Pods.Stepping.Pause) * time.Second)
+		}
 	}
 }
 
@@ -934,7 +960,7 @@ func (p *PodStateVerification) filter(c *client.Client, namespace *api.Namespace
 
 	ns := namespace.Name
 	pl, err := filterLabels(p.Selectors, c, ns) // Build an api.PodList to operate against.
-	Logf("Selector matched %v pods for %v", len(pl.Items), p.Selectors)
+	Logf("Selector matched %v pods for %v in %v", len(pl.Items), p.Selectors, ns)
 	if len(pl.Items) == 0 || err != nil {
 		return pl.Items, err
 	}

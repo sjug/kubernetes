@@ -20,8 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -41,13 +45,18 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 	})
 
 	project := framework.TestContext.ClusterLoader.Projects
+	tuningSets := framework.TestContext.ClusterLoader.TuningSets
 	if len(project) < 1 {
 		framework.Failf("invalid config file.\nFile: %v", project)
 	}
 
 	It(fmt.Sprintf("running config file: %v, length: %v, type %T", project, len(project), project), func() {
 		var namespaces []*api.Namespace
+		//totalPods := 0 // Keep track of how many pods for stepping
 		for _, p := range project {
+			// Find tuning if we have it
+			tuning := getTuningSet(tuningSets, p.Tuning)
+			framework.Logf("Our tuning set is: %v", tuning)
 			for j := 0; j < p.Number; j++ {
 				// Create namespaces as defined in Cluster Loader config
 				nsName := p.Basename + strconv.Itoa(j)
@@ -58,11 +67,12 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 
 				// How about we create some templates
 				for _, v := range p.Templates {
-					createTemplate(mkPath(v.File), v.Number, v.Basename, ns)
+					createTemplate(v.Basename, ns, mkPath(v.File), v.Number, tuning)
 				}
 				// This is too familiar, create pods
 				for _, v := range p.Pods {
-					parsePods(f, mkPath(v.File), v.Number, v.Basename, ns)
+					config := parsePods(mkPath(v.File))
+					f.CreatePods(v.Basename, ns.Name, config.Spec, v.Number, tuning)
 				}
 			}
 		}
@@ -77,6 +87,21 @@ var _ = framework.KubeDescribe("Cluster Loader [Performance] [Slow] [Disruptive]
 	})
 })
 
+func getTuningSet(tuningSets []framework.TuningSetType, podTuning string) (tuning *framework.TuningSetType) {
+	if podTuning != "" {
+		// Interate through defined tuningSets
+		for _, ts := range tuningSets {
+			// If we have a matching tuningSet keep it
+			if ts.Name == podTuning {
+				tuning = &ts
+				return
+			}
+		}
+		framework.Failf("No pod tuning found for: %s", podTuning)
+	}
+	return nil
+}
+
 func mkPath(file string) string {
 	// Handle an empty filename.
 	if file == "" {
@@ -85,20 +110,54 @@ func mkPath(file string) string {
 	return filepath.Join(framework.TestContext.RepoRoot, "examples/", file)
 }
 
-// TODO: Can only create one template per namespace, no way to make duplicates?
-func createTemplate(podYAML string, numObjects int, baseName string, ns *api.Namespace) {
-	framework.RunKubectlOrDie("create", "-f", podYAML, getNsCmdFlag(ns))
-	framework.Logf("1/%d : Created template %s", numObjects, baseName)
+func createTemplate(baseName string, ns *api.Namespace, yaml string, numObjects int, tuning *framework.TuningSetType) {
+	// Try to read the file
+	content, err := ioutil.ReadFile(yaml)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// ${IDENTIFER} is what we're replacing in the file
+	regex, err := regexp.Compile("\\${IDENTIFIER}")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i := 0; i < numObjects; i++ {
+		result := regex.ReplaceAll(content, []byte(strconv.Itoa(i)))
+
+		tmpfile, err := ioutil.TempFile("", "cl")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer os.Remove(tmpfile.Name())
+
+		if _, err := tmpfile.Write(result); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := tmpfile.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+		framework.RunKubectlOrDie("create", "-f", tmpfile.Name(), getNsCmdFlag(ns))
+		framework.Logf("%d/%d : Created template %s", i+1, numObjects, baseName)
+
+		if tuning != nil && tuning.Templates.Stepping.StepSize != 0 && (i+1)%tuning.Templates.Stepping.StepSize == 0 {
+			framework.Logf("We have created %d templates and are now sleeping for %d seconds", i+1, tuning.Templates.Stepping.Pause)
+			time.Sleep(time.Duration(tuning.Templates.Stepping.Pause) * time.Second)
+		}
+	}
 }
 
-func parsePods(f *framework.Framework, podYAML string, numObjects int, baseName string, ns *api.Namespace) {
+func parsePods(podYAML string) (configJSON api.Pod) {
 	config, err := ioutil.ReadFile(podYAML)
 	if err != nil {
 		framework.Failf("Cant read config file. Error: %v", err)
 	}
 
-	var configJSON api.Pod
 	err = json.Unmarshal(config, &configJSON)
 	framework.Logf("The loaded config file is: %+v", configJSON.Spec.Containers)
-	f.CreatePods(baseName, ns.Name, configJSON.Spec, numObjects)
+	return
 }

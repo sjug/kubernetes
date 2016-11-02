@@ -98,7 +98,8 @@ type TestContextType struct {
 	}
 
 	ClusterLoader struct {
-		Projects []ClusterLoaderType
+		Projects   []ClusterLoaderType
+		TuningSets []TuningSetType
 	}
 }
 
@@ -107,8 +108,8 @@ type ClusterLoaderType struct {
 	Number    int `mapstructure:"num"`
 	Basename  string
 	Tuning    string
-	Templates []ClusterLoaderObjectType
 	Pods      []ClusterLoaderObjectType
+	Templates []ClusterLoaderObjectType
 }
 
 // ClusterLoaderObjectType is nested object type for cluster loader struct
@@ -118,6 +119,24 @@ type ClusterLoaderObjectType struct {
 	Image    string
 	Basename string
 	File     string
+}
+
+// TuningSetType is nested type for controlling Cluster Loader deployment pattern
+type TuningSetType struct {
+	Name      string
+	Pods      TuningSetObjectType
+	Templates TuningSetObjectType
+}
+
+// TuningSetObjectType is shared struct for Pods & Templates
+type TuningSetObjectType struct {
+	Stepping struct {
+		StepSize int
+		Pause    int
+	}
+	RateLimit struct {
+		Delay int
+	}
 }
 
 // NodeTestContextType is part of TestContextType, it is shared by all node e2e test.

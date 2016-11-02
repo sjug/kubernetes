@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -114,13 +113,13 @@ func createTemplate(baseName string, ns *api.Namespace, yaml string, numObjects 
 	// Try to read the file
 	content, err := ioutil.ReadFile(yaml)
 	if err != nil {
-		log.Fatal(err)
+		framework.Failf(err)
 	}
 
 	// ${IDENTIFER} is what we're replacing in the file
 	regex, err := regexp.Compile("\\${IDENTIFIER}")
 	if err != nil {
-		log.Fatal(err)
+		framework.Failf(err)
 	}
 
 	for i := 0; i < numObjects; i++ {
@@ -128,17 +127,17 @@ func createTemplate(baseName string, ns *api.Namespace, yaml string, numObjects 
 
 		tmpfile, err := ioutil.TempFile("", "cl")
 		if err != nil {
-			log.Fatal(err)
+			framework.Failf(err)
 		}
 
 		defer os.Remove(tmpfile.Name())
 
 		if _, err := tmpfile.Write(result); err != nil {
-			log.Fatal(err)
+			framework.Failf(err)
 		}
 
 		if err := tmpfile.Close(); err != nil {
-			log.Fatal(err)
+			framework.Failf(err)
 		}
 
 		framework.RunKubectlOrDie("create", "-f", tmpfile.Name(), getNsCmdFlag(ns))

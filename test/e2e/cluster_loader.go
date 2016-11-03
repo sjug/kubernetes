@@ -113,13 +113,13 @@ func createTemplate(baseName string, ns *api.Namespace, yaml string, numObjects 
 	// Try to read the file
 	content, err := ioutil.ReadFile(yaml)
 	if err != nil {
-		framework.Failf(err)
+		framework.Failf("Error %s", err)
 	}
 
 	// ${IDENTIFER} is what we're replacing in the file
 	regex, err := regexp.Compile("\\${IDENTIFIER}")
 	if err != nil {
-		framework.Failf(err)
+		framework.Failf("Error %v", err)
 	}
 
 	for i := 0; i < numObjects; i++ {
@@ -127,30 +127,37 @@ func createTemplate(baseName string, ns *api.Namespace, yaml string, numObjects 
 
 		tmpfile, err := ioutil.TempFile("", "cl")
 		if err != nil {
-			framework.Failf(err)
+			framework.Failf("Error %v", err)
 		}
 
 		defer os.Remove(tmpfile.Name())
 
 		if _, err := tmpfile.Write(result); err != nil {
-			framework.Failf(err)
+			framework.Failf("Error %v", err)
 		}
 
 		if err := tmpfile.Close(); err != nil {
-			framework.Failf(err)
+			framework.Failf("Error %v", err)
 		}
 
 		framework.RunKubectlOrDie("create", "-f", tmpfile.Name(), getNsCmdFlag(ns))
 		framework.Logf("%d/%d : Created template %s", i+1, numObjects, baseName)
 
-		if tuning != nil && tuning.Templates.Stepping.StepSize != 0 && (i+1)%tuning.Templates.Stepping.StepSize == 0 {
-			framework.Logf("We have created %d templates and are now sleeping for %d seconds", i+1, tuning.Templates.Stepping.Pause)
-			time.Sleep(time.Duration(tuning.Templates.Stepping.Pause) * time.Second)
+		if tuning != nil {
+			if tuning.Templates.RateLimit.Delay != 0 {
+				framework.Logf("Sleeping %d ms between template creation.", tuning.Templates.RateLimit.Delay)
+				time.Sleep(time.Duration(tuning.Templates.RateLimit.Delay) * time.Millisecond)
+			}
+			if tuning.Templates.Stepping.StepSize != 0 && (i+1)%tuning.Templates.Stepping.StepSize == 0 {
+				framework.Logf("We have created %d templates and are now sleeping for %d seconds", i+1, tuning.Templates.Stepping.Pause)
+				time.Sleep(time.Duration(tuning.Templates.Stepping.Pause) * time.Second)
+			}
 		}
 	}
 }
 
-func parsePods(podYAML string) (configJSON api.Pod) {
+// parsePods unmarshalls the json file defined in the CL config into a struct
+func parsePods(podYAML string (configJSON api.Pod) {
 	config, err := ioutil.ReadFile(podYAML)
 	if err != nil {
 		framework.Failf("Cant read config file. Error: %v", err)

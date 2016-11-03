@@ -692,30 +692,36 @@ func (f *Framework) CreatePods(appName string, ns string, spec api.PodSpec, maxC
 			Spec: spec,
 		})
 		ExpectNoError(err)
-		if tuning != nil && tuning.Pods.Stepping.StepSize != 0 && (i+1)%tuning.Pods.Stepping.StepSize == 0 {
-			verifyRunning := &ClusterVerification{
-				f.Client,
-				&api.Namespace{
-					ObjectMeta: api.ObjectMeta{
-						Name: ns,
+		if tuning != nil {
+			if tuning.Pods.RateLimit.Delay != 0 {
+				Logf("Sleeping %d ms between podcreation.", tuning.Pods.RateLimit.Delay)
+				time.Sleep(time.Duration(tuning.Pods.RateLimit.Delay) * time.Millisecond)
+			}
+			if tuning.Pods.Stepping.StepSize != 0 && (i+1)%tuning.Pods.Stepping.StepSize == 0 {
+				verifyRunning := &ClusterVerification{
+					f.Client,
+					&api.Namespace{
+						ObjectMeta: api.ObjectMeta{
+							Name: ns,
+						},
+						Status: api.NamespaceStatus{},
 					},
-					Status: api.NamespaceStatus{},
-				},
-				PodStateVerification{
-					Selectors:   labels,
-					ValidPhases: []api.PodPhase{api.PodRunning},
-				},
-			}
+					PodStateVerification{
+						Selectors:   labels,
+						ValidPhases: []api.PodPhase{api.PodRunning},
+					},
+				}
 
-			pods, err := verifyRunning.WaitFor(i+1, time.Duration(60*time.Second))
-			if err != nil {
-				Failf("Error in wait... %v", err)
-			} else if len(pods) < i+1 {
-				Failf("Only got %v out of %v", len(pods), i+1)
-			}
+				pods, err := verifyRunning.WaitFor(i+1, time.Duration(60*time.Second))
+				if err != nil {
+					Failf("Error in wait... %v", err)
+				} else if len(pods) < i+1 {
+					Failf("Only got %v out of %v", len(pods), i+1)
+				}
 
-			Logf("We have created %d pods and are now sleeping for %d seconds", i+1, tuning.Pods.Stepping.Pause)
-			time.Sleep(time.Duration(tuning.Pods.Stepping.Pause) * time.Second)
+				Logf("We have created %d pods and are now sleeping for %d seconds", i+1, tuning.Pods.Stepping.Pause)
+				time.Sleep(time.Duration(tuning.Pods.Stepping.Pause) * time.Second)
+			}
 		}
 	}
 }

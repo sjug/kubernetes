@@ -17,9 +17,15 @@ limitations under the License.
 package e2e
 
 import (
-	"github.com/spf13/viper"
 	"testing"
+
+	"github.com/spf13/viper"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
+
+func init() {
+	framework.ParseFlags()
+}
 
 func TestE2E(t *testing.T) {
 	viper.Debug()

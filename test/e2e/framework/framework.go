@@ -712,7 +712,7 @@ func (f *Framework) CreatePods(appName string, ns string, spec api.PodSpec, maxC
 					},
 				}
 
-				pods, err := verifyRunning.WaitFor(i+1, time.Duration(60*time.Second))
+				pods, err := verifyRunning.WaitFor(i+1, time.Duration(tuning.Pods.Stepping.Timeout)*time.Second)
 				if err != nil {
 					Failf("Error in wait... %v", err)
 				} else if len(pods) < i+1 {

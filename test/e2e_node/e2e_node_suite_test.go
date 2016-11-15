@@ -50,8 +50,8 @@ var e2es *services.E2EServices
 var runServicesMode = flag.Bool("run-services-mode", false, "If true, only run services (etcd, apiserver) in current process, and not run test.")
 
 func init() {
-	framework.RegisterCommonFlags()
 	framework.RegisterNodeFlags()
+	framework.ParseFlags()
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	// Mark the run-services-mode flag as hidden to prevent user from using it.
 	pflag.CommandLine.MarkHidden("run-services-mode")

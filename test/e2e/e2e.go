@@ -34,7 +34,6 @@ import (
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 	"k8s.io/kubernetes/pkg/util/logs"
 	"k8s.io/kubernetes/pkg/util/runtime"
-	commontest "k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -141,9 +140,6 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		framework.Logf("Dumping network health container logs from all nodes")
 		framework.LogContainersInPodsWithLabels(c, api.NamespaceSystem, framework.ImagePullerLabels, "nethealth", framework.Logf)
 	}
-
-	// Reference common test to make the import valid.
-	commontest.CurrentSuite = commontest.E2E
 
 	return nil
 

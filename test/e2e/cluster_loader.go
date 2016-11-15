@@ -172,3 +172,7 @@ func parsePods(jsonFile string) (configStruct api.Pod) {
 	framework.Logf("The loaded config file is: %+v", configStruct.Spec.Containers)
 	return
 }
+
+func getNsCmdFlag(ns *api.Namespace) string {
+	return fmt.Sprintf("--namespace=%v", ns.Name)
+}
